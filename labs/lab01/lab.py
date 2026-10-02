@@ -31,7 +31,16 @@ def consecutive_ints(ints):
 
 
 def median_vs_mean(nums):
-    ...
+    if len(nums) == 0:
+        return False
+    mean = sum(nums) / len(nums)
+    median = 0
+    sorted_nums = sorted(nums)
+    if len(sorted_nums) % 2 == 0:
+        median = (sorted_nums[len(sorted_nums) // 2 - 1] + sorted_nums[len(sorted_nums) // 2]) / 2
+    else:
+        median = sorted_nums[len(sorted_nums) // 2]
+    return mean >= median
 
 
 # ---------------------------------------------------------------------
@@ -40,7 +49,11 @@ def median_vs_mean(nums):
 
 
 def n_prefixes(s, n):
-    ...
+    st = ""
+    while n > 0:
+        st += s[:n]
+        n -= 1
+    return st
 
 
 # ---------------------------------------------------------------------
