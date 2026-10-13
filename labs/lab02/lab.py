@@ -118,6 +118,7 @@ def clean_universities(df):
                                          'UK': 'United Kingdom',
                                          'USA': 'United States'})
     df['is_r1_public'] = (df['control'] == 'Public') & df['city'].notna() & df['state'].notna()
+    return df
 
 def university_info(cleaned):
     group = cleaned.groupby('state')
