@@ -60,7 +60,12 @@ def population_stats(df):
 
 
 def most_common(df, N=10):
-    ...
+    pd_out = pd.DataFrame(index = range(N))
+    for col in df.columns:
+        counts = df[col].value_counts().iloc[:N]
+        pd_out[col + '_values'] = pd.Series(counts.index)
+        pd_out[col + '_counts'] = pd.Series(counts.values)
+    return pd_out
 
 
 # ---------------------------------------------------------------------
@@ -69,7 +74,13 @@ def most_common(df, N=10):
 
 
 def super_hero_powers(powers):
-    ...
+    named_powers = powers.set_index('hero_names')
+    num_powers = named_powers.sum(axis=1)
+    most_powers = num_powers.idxmax()
+    flight = named_powers[named_powers['Flight']].drop(columns = 'Flight')
+    most_common = flight.sum().idxmax()
+    one_power = named_powers[num_powers == 1].sum().idxmax()
+    return [most_powers, most_common, one_power]
 
 
 # ---------------------------------------------------------------------
@@ -78,7 +89,7 @@ def super_hero_powers(powers):
 
 
 def clean_heroes(heroes):
-    ...
+    return heroes.replace(['-', -99], np.nan)
 
 
 # ---------------------------------------------------------------------
@@ -87,8 +98,8 @@ def clean_heroes(heroes):
 
 
 def super_hero_stats():
-    ...
-
+    return ['Onslaught', 'George Lucas', 'bad', 'Marvel Comics', 'NBC - Heroes', 'Groot']
+    
 
 # ---------------------------------------------------------------------
 # QUESTION 7
@@ -96,8 +107,27 @@ def super_hero_stats():
 
 
 def clean_universities(df):
-    ...
+    df = df.copy()
+    df['institution'] = df['institution'].replace('\n', ', ')
+    df['broad_impact'] = df['broad_impact'].astype(int)
+    nationrank_split = df['national_rank'].str.split(', ', n=1, expand=True)
+    df['nation'] = nationrank_split[0]
+    df['national_rank_cleaned'] = nationrank_split[1].astype(int)
+    df = df.drop(columns = 'national_rank')
+    df['nation'] = df['nation'].replace({'Czechia': 'Czech Republic',
+                                         'UK': 'United Kingdom',
+                                         'USA': 'United States'})
+    df['is_r1_public'] = (df['control'] == 'Public') & df['city'].notna() & df['state'].notna()
 
 def university_info(cleaned):
-    ...
+    group = cleaned.groupby('state')
+    means = group['score'].mean()[group.size() >= 3]
+    lowestmean_state = means.idxmin()
+    top100 = cleaned[cleaned['world_rank'] <= 100]
+    propintop100 = float((top100['quality_of_faculty'] <= 100).mean())
+    private_prop = (~cleaned['is_r1_public']).groupby(cleaned['state']).mean()
+    privates_states = int((private_prop >= 0.50).sum())
+    best_in_nation = cleaned[cleaned['national_rank_cleaned'] == 1]
+    worst_world = best_in_nation.loc[best_in_nation['world_rank'].idxmax(), 'institution']
+    return [lowestmean_state, propintop100, privates_states, worst_world]
 
