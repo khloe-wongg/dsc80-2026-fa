@@ -14,11 +14,26 @@ import numpy as np
 
 
 def trick_me():
-    ...
+    # tricky_1 = pd.DataFrame(
+    #     [['one', 'a', 1],
+    #      ['two', 'b', 2],
+    #      ['three', 'c', 3],
+    #      ['four', 'd', 4],
+    #      ['five', 'e', 5]],
+    #      columns = ['Name', 'Name', 'Age']
+    # )
+    # tricky_1.to_csv('tricky_1.csv', index = False)
+    # tricky_2 = pd.read_csv('tricky_1.csv')
+    return 3
 
-
+# bools = pd.DataFrame(
+#     [[0, 0, 1, 1],
+#      [1, 1, 0, 0],
+#      [0, 1, 0, 1],
+#      [1, 0, 1, 0]],
+#     columns = [True, True, False, False])
 def trick_bool():
-    ...
+    return [4, 10, 13]
 
 
 # ---------------------------------------------------------------------
@@ -27,7 +42,16 @@ def trick_bool():
 
 
 def population_stats(df):
-    ...
+    num_nonnull = df.count()
+    prop_nonnull = num_nonnull / len(df)
+    num_distinct = df.nunique()
+    prop_distinct = num_distinct / num_nonnull
+    return pd.DataFrame({
+        'num_nonnull': num_nonnull,
+        'prop_nonnull': prop_nonnull,
+        'num_distinct': num_distinct,
+        'prop_distinct': prop_distinct
+    })
 
 
 # ---------------------------------------------------------------------
