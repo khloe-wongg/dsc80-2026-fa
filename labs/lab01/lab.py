@@ -111,17 +111,17 @@ def where_square(A):
 def filter_cutoff_loop(matrix, cutoff):
     rows, cols = matrix.shape
     lst = []
-    for i in range(rows):
+    for j in range(cols):
         total = 0
-        for j in range(cols):
+        for i in range(rows):
             total += matrix[i][j]
-        mean = total / rows
-        if mean > cutoff:
-            column = []
-            for i in range(rows):
-                column.append(matrix[i][j])
-            lst.append(column)
-    return np.array(lst).T
+        if total / rows > cutoff:
+            lst.append(j)
+    result = np.empty((rows, len(lst)), dtype=matrix.dtype)
+    for new_j, old_j in enumerate(lst):
+        for i in range(rows):
+            result[i][new_j] = matrix[i][old_j]
+    return result
 
 
 # ---------------------------------------------------------------------
