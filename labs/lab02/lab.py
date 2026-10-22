@@ -108,7 +108,7 @@ def super_hero_stats():
 
 def clean_universities(df):
     df = df.copy()
-    df['institution'] = df['institution'].replace('\n', ', ')
+    df['institution'] = df['institution'].str.replace(r'\r?\n', ', ', regex=True)
     df['broad_impact'] = df['broad_impact'].astype(int)
     nationrank_split = df['national_rank'].str.split(', ', n=1, expand=True)
     df['nation'] = nationrank_split[0]
