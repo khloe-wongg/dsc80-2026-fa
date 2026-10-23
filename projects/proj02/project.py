@@ -37,7 +37,13 @@ warnings.filterwarnings("ignore")
 
 
 def clean_loans(loans):
-    ...
+    out = loans.copy()
+    out['emp_title'] = out['emp_title'].str.strip().str.lower().replace('rn', 'registered nurse')
+    out['issue_d'] = pd.to_datetime(loans['issue_d'], format = "%b-%Y")
+    out['term'] = out['term'].str.split().str[0].astype(int)
+    out['term_end'] = out.apply(lambda row: row['issue_d'] + pd.DateOffset(months = row['term']), axis = 1)
+
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -46,7 +52,13 @@ def clean_loans(loans):
 
 
 def correlations(df, pairs):
-    ...
+    lst = []
+    idxs = []
+    for tup in pairs:
+        idxs.append("r_" + tup[0] + "_" + tup[1])
+        corrcoef = np.corrcoef(df[tup[0]].to_numpy(), df[tup[1]].to_numpy())[0, 1]
+        lst.append(corrcoef)
+    return pd.Series(lst, index = idxs)
 
 
 # ---------------------------------------------------------------------
@@ -55,7 +67,27 @@ def correlations(df, pairs):
 
 
 def create_boxplot(loans):
-    ...
+    df = loans.copy()
+    edges = [580, 670, 740, 800, 850]
+    df['Credit Score Range'] = pd.cut(loans['fico_range_low'], bins = edges, right=False).astype(str)
+    df['Loan Length (Months)'] = df['term'].astype(str)
+    order = ['[580, 670)', '[670, 740)', '[740, 800)', '[800, 850)']
+
+    fig = px.box(
+        df,
+        x='Credit Score Range',
+        y='int_rate',
+        color='Loan Length (Months)',
+        color_discrete_map={'36': 'blue', '60': 'red'},
+        category_orders={
+            'Credit Score Range': order,
+            'Loan Length (Months)': ['36', '60'],
+        },
+        labels={'int_rate': 'Interest Rate (%)'},
+        title='Interest Rate vs. Credit Score',
+    )
+    fig.update_layout(title_x=0.5)
+    return fig
 
 
 # ---------------------------------------------------------------------
@@ -64,13 +96,21 @@ def create_boxplot(loans):
 
 
 def ps_test(loans, N):
-    ...
+    has_ps = loans['desc'].notna().to_numpy()
+    rates = loans['int_rate'].to_numpy()
+    observed = rates[has_ps].mean() - rates[~has_ps].mean()
+    differences = []
+    for _ in range(N):
+        shuffled = np.random.permutation(has_ps)
+        difference = rates[shuffled].mean() - rates[~shuffled].mean()
+        differences.append(difference)
+    return (differences >= observed).mean()
     
 def missingness_mechanism():
-    ...
+    return 2
     
 def other_missingness():
-    ...
+    return 2
 
 
 # ---------------------------------------------------------------------
