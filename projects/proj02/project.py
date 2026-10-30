@@ -119,7 +119,13 @@ def other_missingness():
 
 
 def tax_owed(income, brackets):
-    ...
+    tax_total = 0
+    i = 0
+    while i + 1 < len(brackets) and income > brackets[i+1][1]:
+        tax_total += (brackets[i+1][1] - brackets[i][1]) * brackets[i][0]
+        i += 1
+    tax_total += (income - brackets[i][1]) * brackets[i][0]
+    return tax_total
 
 
 # ---------------------------------------------------------------------
@@ -128,7 +134,20 @@ def tax_owed(income, brackets):
 
 
 def clean_state_taxes(state_taxes_raw): 
-    ...
+    state_taxes_raw = state_taxes_raw.dropna(how='all').copy()
+    states = state_taxes_raw['State'].mask(state_taxes_raw['State'].str.startswith('(', na=False))
+    state_taxes_raw['State'] = states.ffill()
+
+    rate = state_taxes_raw['Rate'].astype(str).str.strip()
+    rate = rate.str.replace('none', '0%', regex=False)
+    rate = rate.str.replace('%', '', regex=False).astype(float) / 100
+    state_taxes_raw['Rate'] = rate.apply(lambda x: round(x, 2))
+
+    limit = state_taxes_raw['Lower Limit'].fillna('0').astype(str)
+    limit = limit.str.replace(r'[$,\s]', '', regex=True)
+    state_taxes_raw['Lower Limit'] = limit.astype(int)
+
+    return state_taxes_raw
 
 
 # ---------------------------------------------------------------------
@@ -137,7 +156,8 @@ def clean_state_taxes(state_taxes_raw):
 
 
 def state_brackets(state_taxes):
-    ...
+    pairs = list(zip(state_taxes['Rate'].tolist(), state_taxes['Lower Limit'].tolist()))
+    return (state_taxes.assign(bracket_list=pairs).groupby('State')[['bracket_list']].agg(list))
     
 def combine_loans_and_state_taxes(loans, state_taxes):
     # Start by loading in the JSON file.
@@ -148,7 +168,10 @@ def combine_loans_and_state_taxes(loans, state_taxes):
         state_mapping = json.load(f)
         
     # Now it's your turn:
-    ...
+    brackets = state_brackets(state_taxes)
+    brackets.index = brackets.index.map(state_mapping)
+    brackets.index.name = "State"
+    return (loans.rename(columns = {'addr_state': 'State'}).merge(brackets, left_on='State', right_index = True, how='left'))
 
 
 # ---------------------------------------------------------------------
@@ -157,6 +180,7 @@ def combine_loans_and_state_taxes(loans, state_taxes):
 
 
 def find_disposable_income(loans_with_state_taxes):
+    df = loans_with_state_taxes.copy()
     FEDERAL_BRACKETS = [
      (0.1, 0), 
      (0.12, 11000), 
@@ -166,7 +190,9 @@ def find_disposable_income(loans_with_state_taxes):
      (0.35, 231251),
      (0.37, 578125)
     ]
-    ...
+    return df.assign(federal_tax_owed = lambda d: d['annual_inc'].apply(lambda inc: tax_owed(inc, FEDERAL_BRACKETS)),
+                     state_tax_owed = lambda d: d.apply(lambda row: tax_owed(row['annual_inc'], row['bracket_list']), axis = 1)).assign(
+                     disposable_income = lambda d: d['annual_inc'] - d['federal_tax_owed'] - d['state_tax_owed'])
 
 
 # ---------------------------------------------------------------------
@@ -175,7 +201,16 @@ def find_disposable_income(loans_with_state_taxes):
 
 
 def aggregate_and_combine(loans, keywords, quantitative_column, categorical_column):
-    ...
+    result = pd.DataFrame()
+    for keyword in keywords:
+        col_name = f'{keyword}_mean_{quantitative_column}'
+        has_kw = loans[loans['emp_title'].str.contains(keyword, na=False)]
+        by_group = has_kw.groupby(categorical_column)[quantitative_column].mean()
+        by_group.loc['Overall'] = has_kw[quantitative_column].mean()
+        result[col_name] = by_group
+    result.index.name = categorical_column
+    groups = [g for g in result.index if g != 'Overall']
+    return result.loc[groups + ['Overall']]
 
 
 # ---------------------------------------------------------------------
@@ -184,12 +219,14 @@ def aggregate_and_combine(loans, keywords, quantitative_column, categorical_colu
 
 
 def exists_paradox(loans, keywords, quantitative_column, categorical_column):
-    ...
+    agg = aggregate_and_combine(loans, keywords, quantitative_column, categorical_column)
+    diff = agg.iloc[:, 0] - agg.iloc[:, 1]
+    return bool(((diff.iloc[:-1] > 0).all() and diff.iloc[-1] < 0) or ((diff.iloc[:-1] < 0).all() and diff.iloc[-1] > 0))
     
 def paradox_example(loans):
     return {
         'loans': loans,
-        'keywords': [..., ...],
-        'quantitative_column': ...,
-        'categorical_column': ...
+        'keywords': ['manager', 'driver'],
+        'quantitative_column': 'int_rate',
+        'categorical_column': 'verification_status'
     }
