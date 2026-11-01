@@ -13,7 +13,7 @@ from scipy import stats
 
 
 def after_purchase():
-    ...
+    return ['NMAR', 'MD', 'MAR', 'MAR', 'MAR']
 
 
 # ---------------------------------------------------------------------
@@ -22,7 +22,7 @@ def after_purchase():
 
 
 def multiple_choice():
-    ...
+    return ['MAR', 'MAR', 'MAR', 'NMAR', 'MCAR']
 
 
 # ---------------------------------------------------------------------
