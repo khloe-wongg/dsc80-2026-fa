@@ -150,14 +150,40 @@ class NGramLM(object):
             self.prev_mdl = NGramLM(N-1, tokens)
 
     def create_ngrams(self, tokens):
-        ...
+        return [tuple(tokens[i:i + self.N]) for i in range(len(tokens)- self.N +1)]
         
     def train(self, ngrams):
-        ...
+        df = pd.DataFrame({'ngram': ngrams})
+        df['n1gram'] = df['ngram'].apply(lambda x: x[:-1])
+        df['ngram_count'] = df.groupby('ngram')['ngram'].transform('size')
+        df['n1gram_count'] = df.groupby('n1gram')['n1gram'].transform('size')
+        df['prob'] = df['ngram_count'] / df['n1gram_count']
+        return (df.drop_duplicates('ngram')[['ngram', 'n1gram', 'prob']].reset_index(drop=True))
     
     def probability(self, words):
-        ...
+        words = tuple(words)
+        N = self.N
+        if len(words) < N:
+            return self.prev_mdl.probability(words)
+        prob = self.prev_mdl.probability(words[:N - 1])
+        lookup = dict(zip(self.mdl['ngram'], self.mdl['prob']))
+        for i in range(len(words) - N + 1):
+            prob *= lookup.get(words[i:i + N], 0)
+        return float(prob)
     
 
     def sample(self, M):
-        ...
+        tokens = ['\x02']
+        for _ in range(M - 1):
+            context = tuple(tokens[-(self.N - 1):])
+            model = self
+            while model.N > len(context) + 1:
+                model = model.prev_mdl
+            rows = model.mdl[model.mdl['n1gram'].map(lambda x: x == context)]
+            if len(rows) == 0:
+                tokens.append('\x03')
+            else:
+                next_tokens = rows['ngram'].map(lambda x: x[-1]).to_numpy()
+                tokens.append(np.random.choice(next_tokens, p=rows['prob'].to_numpy()))
+        tokens.append('\x03')
+        return ' '.join(tokens)
