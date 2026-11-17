@@ -31,7 +31,7 @@ def match_1(string):
     >>> match_1("1b[#d] _")
     True
     """
-    pattern = ...
+    pattern = r"^..\[..\].*$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -58,7 +58,7 @@ def match_2(string):
     >>> match_2("(858) 456-7890b")
     False
     """
-    pattern = ...
+    pattern = r"^\(858\) \d{3}-\d{4}$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -85,7 +85,7 @@ def match_3(string):
     >>> match_3(" adf!qe? ")
     False
     """
-    pattern = ...
+    pattern = r"^[a-zA-Z0-9\s?]{5,9}\?$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -114,7 +114,7 @@ def match_4(string):
     >>> match_4("$!@$")
     False
     """
-    pattern = ...
+    pattern = r"^\$[^abc$]*\$[Aa]+[Bb]+[Cc]+$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -133,7 +133,7 @@ def match_5(string):
     >>> match_5("dsc80+.py")
     False
     """
-    pattern = ...
+    pattern = r"^\w+\.py$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -154,7 +154,7 @@ def match_6(string):
     >>> match_6("ABCDEF_ABCD")
     False
     """
-    pattern = ...
+    pattern = r"^[a-z]+_[a-z]+$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -173,7 +173,7 @@ def match_7(string):
     >>> match_7("_ncde")
     False
     """
-    pattern = ...
+    pattern = r"^_.*_$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -195,7 +195,7 @@ def match_8(string):
     >>> match_8("ASDJKL9380JKAL")
     True
     """
-    pattern = ...
+    pattern = r"^[^Oi1]+$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -219,7 +219,7 @@ def match_9(string):
     >>> match_9('TX-32-SAN-4491')
     False
     '''
-    pattern = ...
+    pattern = r"^(CA-\d{2}-(SAN|LAX)-\d{4}|NY-\d{2}-[A-Z]{3}-\d{4})$"
 
     # Do not edit following code
     prog = re.compile(pattern)
@@ -241,7 +241,8 @@ def match_10(string):
     ['bde']
     
     '''
-    ...
+    cleaned = re.sub(r'[\Wa]', '', string.lower())
+    return re.findall(r'.{3}', cleaned)
 
 
 # ---------------------------------------------------------------------
@@ -250,8 +251,11 @@ def match_10(string):
 
 
 def extract_personal(s):
-    ...
-
+    emails = re.findall(r"[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]+", s)
+    ssns = re.findall(r"ssn:(\d{3}-\d{2}-\d{4})", s)
+    bitcoins = re.findall(r"bitcoin:([A-Za-z0-9]{20,})", s)
+    streets = re.findall(r'[,*|#\t](\d+ [A-Za-z0-9 ]+)(?=\n|$)', s)
+    return (emails, ssns, bitcoins, streets)
 
 # ---------------------------------------------------------------------
 # QUESTION 3
@@ -259,11 +263,25 @@ def extract_personal(s):
 
 
 def hashtag_list(tweet_text):
-    ...
+    return tweet_text.apply(lambda t : re.findall(r"#(\S+)", t))
 
 def most_common_hashtag(tweet_lists):
-    ...
+    counts = tweet_lists.explode().value_counts()
+    return tweet_lists.apply(lambda lst : max(lst, key = counts.get) if len(lst) > 0 else np.nan)
 
 
 def create_features(tweets):
-    ...
+    text = tweets['text']
+    tags = hashtag_list(text)
+    out = pd.DataFrame(index = tweets.index)
+    out['text'] = (text.str.replace(r'#\S+|@[A-Za-z0-9]+|https?://\S+|\bRT\b', '', regex=True)
+                   .str.replace(r"[^A-Za-z0-9\s]", ' ', regex=True)
+                   .str.lower()
+                   .str.replace(' +', ' ', regex=True)
+                   .str.replace(r'^ | $', '', regex=True))
+    out['num_hashtags'] = tags.str.len()
+    out['common_hashtag'] = most_common_hashtag(tags)
+    out['num_tags'] = text.str.count(r"@[A-Za-z0-9]+")
+    out['num_links'] = text.str.count(r"https?://\S+")
+    out['is_retweet'] = text.str.contains(r"^RT", regex=True)
+    return out[['text', 'num_hashtags', 'common_hashtag', 'num_tags', 'num_links', 'is_retweet']]
